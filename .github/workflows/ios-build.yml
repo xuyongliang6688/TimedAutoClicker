@@ -33,9 +33,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          app_path="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/Build/Products/Release-iphonesimulator/TimedAutoClicker.app' -type d | head -n 1)"
+          app_path="$(find "$PWD/build" "$HOME/Library/Developer/Xcode/DerivedData" -path '*/Release-iphonesimulator/TimedAutoClicker.app' -type d 2>/dev/null | head -n 1)"
           if [ -z "$app_path" ]; then
             echo "TimedAutoClicker.app was not found."
+            find "$PWD/build" -maxdepth 5 -type d | sort
             exit 1
           fi
           ditto -c -k --sequesterRsrc --keepParent "$app_path" artifacts/TimedAutoClicker-simulator-app.zip
@@ -56,9 +57,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/Payload
-          app_path="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/Build/Products/Release-iphoneos/TimedAutoClicker.app' -type d | head -n 1)"
+          app_path="$(find "$PWD/build" "$HOME/Library/Developer/Xcode/DerivedData" -path '*/Release-iphoneos/TimedAutoClicker.app' -type d 2>/dev/null | head -n 1)"
           if [ -z "$app_path" ]; then
             echo "TimedAutoClicker.app was not found."
+            find "$PWD/build" -maxdepth 5 -type d | sort
             exit 1
           fi
           cp -R "$app_path" artifacts/Payload/
