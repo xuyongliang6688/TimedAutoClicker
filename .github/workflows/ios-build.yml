@@ -1,0 +1,74 @@
+name: iOS build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build simulator app
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project TimedAutoClicker.xcodeproj \
+            -target TimedAutoClicker \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            clean build
+
+      - name: Package simulator app
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          app_path="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/Build/Products/Release-iphonesimulator/TimedAutoClicker.app' -type d | head -n 1)"
+          if [ -z "$app_path" ]; then
+            echo "TimedAutoClicker.app was not found."
+            exit 1
+          fi
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" artifacts/TimedAutoClicker-simulator-app.zip
+
+      - name: Build unsigned device app
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project TimedAutoClicker.xcodeproj \
+            -target TimedAutoClicker \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/Payload
+          app_path="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/Build/Products/Release-iphoneos/TimedAutoClicker.app' -type d | head -n 1)"
+          if [ -z "$app_path" ]; then
+            echo "TimedAutoClicker.app was not found."
+            exit 1
+          fi
+          cp -R "$app_path" artifacts/Payload/
+          (cd artifacts && zip -qry TimedAutoClicker-unsigned.ipa Payload)
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: TimedAutoClicker-build
+          path: |
+            artifacts/TimedAutoClicker-simulator-app.zip
+            artifacts/TimedAutoClicker-unsigned.ipa
+
